@@ -26,7 +26,7 @@ def get_post(post_id: int, db: Session = Depends(get_db)):
     raise HTTPException(status_code=404, detail="Post not found")
 
 
-@router.patch("/post/{post_id}/", response_model=schemas.Post, tags=["Post"])
+@router.put("/post/{post_id}/", response_model=schemas.Post, tags=["Post"])
 def update_post(post_id: int, post_update: schemas.PostUpdate, db: Session = Depends(get_db),
                 current_user: models.User = Depends(get_current_user)):
     if views.post.get_post(db=db, post_id=post_id):

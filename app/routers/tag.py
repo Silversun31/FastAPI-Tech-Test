@@ -26,7 +26,7 @@ def get_tag(tag_id: int, db: Session = Depends(get_db)):
     raise HTTPException(status_code=404, detail="Tag not found")
 
 
-@router.patch("/tag/{tag_id}/", response_model=schemas.Tag, tags=["Tag"])
+@router.put("/tag/{tag_id}/", response_model=schemas.Tag, tags=["Tag"])
 def update_tag(tag_id: int, tag_update: schemas.TagUpdate, db: Session = Depends(get_db),
                current_user: models.User = Depends(get_current_user)):
     if views.tag.get_tag(db=db, tag_id=tag_id):

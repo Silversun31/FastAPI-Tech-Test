@@ -26,7 +26,7 @@ def get_comment(comment_id: int, db: Session = Depends(get_db)):
     raise HTTPException(status_code=404, detail="Comment not found")
 
 
-@router.patch("/comment/{comment_id}/", response_model=schemas.Comment, tags=["Comment"])
+@router.put("/comment/{comment_id}/", response_model=schemas.Comment, tags=["Comment"])
 def update_comment(comment_id: int, comment_update: schemas.CommentUpdate, db: Session = Depends(get_db),
                    current_user: models.User = Depends(get_current_user)):
     if views.comment.get_comment(db=db, comment_id=comment_id):
