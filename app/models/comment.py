@@ -9,6 +9,6 @@ class Comment(Base, SoftDeleteMixin, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     content = Column(String)
     post_id = Column(Integer, ForeignKey('posts.id'))
-    post = relationship('Post', back_populates='comments')
+    post = relationship('Post', back_populates='comments', lazy="selectin")
     owner_id = Column(Integer, ForeignKey('users.id'))
-    owner = relationship('User', back_populates='comments')
+    owner = relationship('User', back_populates='comments', lazy="selectin")

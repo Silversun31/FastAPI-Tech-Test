@@ -1,14 +1,13 @@
 from functools import wraps
 from typing import cast, Annotated, Callable
-
 import jwt
 from fastapi import Depends, HTTPException
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
-
 from app import models
 from app.core.config import oauth2_scheme
 from app.database import get_db
@@ -36,7 +35,7 @@ def create_access_token(data: dict):
     return encoded_jwt
 
 
-def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session = Depends(get_db)):
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: AsyncSession = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -50,7 +49,11 @@ def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Session 
     except Exception:
         raise credentials_exception
 
-    user = db.query(models.User).filter(cast("ColumnElement[bool]", models.User.username == username)).first()
+    result = await db.execute(
+        select(models.User).filter(models.User.username == username)
+    )
+    user = result.scalar_one_or_none()
+
     if user is None:
         raise credentials_exception
     return user
