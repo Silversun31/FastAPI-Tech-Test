@@ -1,93 +1,65 @@
-from typing import cast
+from typing import cast, Type
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import HTTPException
+from sqlalchemy.orm import Session, Query
+from starlette import status
 
 from app import schemas
-from app.exceptions.exceptions import POST_NOT_FOUND_EXCEPTION, NOT_POST_OWNER_EXCEPTION
 from app.models.tag import Tag
 from app.models.post import Post
 from app.schemas.post import PostCreate
 
 
-async def create_post(db: AsyncSession, post: PostCreate, user_id: int):
-    result = await db.execute(select(Tag).filter(Tag.id.in_(post.tag_ids)))
-    tags = result.scalars().all()
+def create_post(db: Session, post: PostCreate, user_id: int):
+    tags = db.query(Tag).filter(Tag.id.in_(post.tag_ids)).all()
     db_post = Post(**post.dict(exclude={"tag_ids"}), owner_id=user_id)
     db_post.tags = tags
     db.add(db_post)
-    await db.commit()
-    await db.refresh(db_post)
+    db.commit()
+    db.refresh(db_post)
     return db_post
 
 
-async def get_posts(db: AsyncSession, skip: int = 0, limit: int = 10):
-    result = await db.execute(
-        select(Post).filter(Post.is_deleted == False).offset(skip).limit(limit)
-    )
-    return result.scalars().all()
+def get_posts(db: Session, skip: int = 0, limit: int = 10):
+    return db.query(Post).filter(cast("ColumnElement[bool]", Post.is_deleted == False)).offset(skip).limit(limit)
 
 
-async def get_post(post_id: int, db: AsyncSession):
-    result = await db.execute(
-        select(Post).filter(
-            cast("ColumnElement[bool]", Post.is_deleted == False),
-            cast("ColumnElement[bool]", Post.id == post_id)
-        )
-    )
-    if not result:
-        raise POST_NOT_FOUND_EXCEPTION
-    return result.scalar_one_or_none()
+def get_post(post_id: int, db: Session):
+    return db.query(Post).filter(cast("ColumnElement[bool]", Post.is_deleted == False),
+                                 cast("ColumnElement[bool]", Post.id == post_id)).first()
 
 
-async def update_post(post_id: int, post_update: schemas.PostUpdate, db: AsyncSession, user_id: int):
-    result = await db.execute(
-        select(Post).filter(
-            cast("ColumnElement[bool]", Post.is_deleted == False),
-            cast("ColumnElement[bool]", Post.id == post_id)
-        )
-    )
-    post = result.scalar_one_or_none()
+def update_post(post_id: int, post_update: schemas.PostUpdate, db: Session, user_id: int):
+    post = db.query(Post).filter(cast("ColumnElement[bool]", Post.is_deleted == False),
+                                 cast("ColumnElement[bool]", Post.id == post_id))
+    # Comprobar si el que hace la peticion es el creador del post
+    if post.first().owner_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not post's owner")
 
     if not post:
-        raise POST_NOT_FOUND_EXCEPTION
-
-    # Comprobar si el que hace la petición es el creador del post
-    if post.owner_id != user_id:
-        raise NOT_POST_OWNER_EXCEPTION
-
-    # Actualizar los valores
-    for key, value in post_update.dict(exclude={"tag_ids"}).items():
-        setattr(post, key, value)
+        raise HTTPException(status_code=404, detail="Post not found")
+    post.update(values=post_update.dict(exclude={"tag_ids"}))
+    post = post.first()
 
     if post_update.tag_ids is not None:
         post.tags.clear()
-        result = await db.execute(select(Tag).filter(Tag.id.in_(post_update.tag_ids)))
-        new_tags = result.scalars().all()
+        new_tags = db.query(Tag).filter(Tag.id.in_(post_update.tag_ids)).all()
         post.tags.extend(new_tags)
-
-    await db.commit()
-    await db.refresh(post)
+    db.commit()
+    db.refresh(post)
 
     return post
 
 
-async def delete_post(post_id: int, db: AsyncSession, user_id: int):
-    result = await db.execute(
-        select(Post).filter(cast("ColumnElement[bool]", Post.id == post_id),
-                            cast("ColumnElement[bool]", Post.is_deleted == False))
-    )
-    post = result.scalar_one_or_none()
+def delete_post(post_id: int, db: Session, user_id: int):
+    post = db.query(Post).filter(cast("ColumnElement[bool]", Post.id == post_id)).first()
 
-    if not post:
-        raise POST_NOT_FOUND_EXCEPTION
-
-    # Comprobar si el que hace la petición es el creador del post
+    # Comprobar si el que hace la peticion es el creador del post
     if post.owner_id != user_id:
-        raise NOT_POST_OWNER_EXCEPTION
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not post's owner")
 
     post.is_deleted = True
-    await db.commit()
-    await db.refresh(post)
+    db.commit()
+    db.refresh(post)
 
     return post

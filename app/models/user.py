@@ -9,5 +9,5 @@ class User(Base, SoftDeleteMixin, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     password = Column(String, nullable=False)
-    posts = relationship('Post', back_populates='owner', lazy="selectin")
-    comments = relationship('Comment', back_populates='owner', lazy="selectin")
+    posts = relationship('Post', back_populates='owner')
+    comments = relationship('Comment', back_populates='owner')
