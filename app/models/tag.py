@@ -9,4 +9,4 @@ class Tag(Base, SoftDeleteMixin, TimestampMixin):
     __tablename__ = 'tags'
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
-    posts = relationship('Post', secondary=post_tag, back_populates='tags', lazy="selectin")
+    posts = relationship('Post', secondary=post_tag, back_populates='tags')

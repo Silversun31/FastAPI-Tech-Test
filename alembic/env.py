@@ -5,7 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 
-from app.database import Base, DATABASE_URL, DATABASE_SYNC_URL
+from app.database import Base, DATABASE_URL
 from app.models import *
 
 # this is the Alembic Config object, which provides
@@ -61,7 +61,7 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    connectable = create_engine(DATABASE_SYNC_URL)
+    connectable = create_engine(DATABASE_URL)
 
     with connectable.connect() as connection:
         context.configure(
